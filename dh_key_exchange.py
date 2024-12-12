@@ -79,27 +79,8 @@ def start_dh_exchange():
 
     A = pow(g, a, p)  # Clé client publique
     print(f"[INFO] Votre clé publique : {A}")
-    # Create a socket object
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # Connect to the server
-    client_socket.connect(('localhost', 12345))
-    messages = [b"dh",str(A).encode(),str(p).encode(),str(g).encode()]
-    for data in messages:
-        client_socket.sendall(data)
-        retour = client_socket.recv(1024)
-    #client_socket.sendall
-    """client_socket.sendall(b"dh")
-    client_socket.sendall(str(A).encode())
-    client_socket.sendall(str(p).encode())
-    client_socket.sendall(str(g).encode())"""
-    # Receive data from the server
-    data = client_socket.recv(1024)
-    B = int(data.decode())
-    session_key = pow(B,a,p)
-    print(f"[INFO] Clé de séssion dh: {session_key}")
+    
 
     # Close the connection
-    client_socket.close()
-    return B
+    return A, a, p, g
 
-start_dh_exchange()

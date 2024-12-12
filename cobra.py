@@ -186,7 +186,6 @@ def key_expansion(key, rounds=32):
     
     binary_representation = bin(key)[2:]  # Remove "0b" prefix
     binary_representation = binary_representation + '0' * (256 - len(binary_representation))
-    print(binary_representation)
     # Convert binary string to bytes
     key = int(binary_representation, 2).to_bytes(32, byteorder='big') 
     
@@ -236,7 +235,7 @@ def key_expansion(key, rounds=32):
 
 
 
-def serpent_chiffrer(plaintext, round_keys, rounds=32):
+def serpent_chiffrer(plaintext, key, rounds=32):
     """
     Encrypts a 128-bit plaintext using Serpent.
     
@@ -249,7 +248,7 @@ def serpent_chiffrer(plaintext, round_keys, rounds=32):
         int: Encrypted ciphertext.
     """
     # Generate round keys
-    
+    round_keys = key_expansion(key)
 
     # Initial permutation
     ciphertext = plaintext
@@ -265,8 +264,11 @@ def serpent_chiffrer(plaintext, round_keys, rounds=32):
         ciphertext = transfo_lineaire(ciphertext)
     return ciphertext
 
-def serpent_dechiffrer(plaintext, round_keys, rounds=32):
+def serpent_dechiffrer(plaintext, key, rounds=32):
     # Initial permutation
+
+    round_keys = key_expansion(key)
+    
     ciphertext = plaintext
     round_num = 0
 
@@ -282,13 +284,16 @@ def serpent_dechiffrer(plaintext, round_keys, rounds=32):
     return ciphertext
 
 # Exemple d'utilisation
-key_128 = b"1234567890abcdef"  # Clé de 128 bits
+"""key_128 = b"1234567890abcdef"  # Clé de 128 bits
 key_192 = b"1234567890abcdef12345678"  # Clé de 192 bits
 key_256 = b"1234567890abcdef1234567890abcdef"  # Clé de 256 bits
 key_bin = 2168733696540266461650633951754762301768537109613915519
 print("Sous-clés pour clé de 128 bits :")
 text = 0xabcdef0123456789abcdef0123456789
+text = "Test"
+text = int.from_bytes(text.encode(), byteorder='big')
+print(text)
 key = key_expansion(key_bin)
-a = serpent_chiffrer(text, key)
+a = serpent_chiffrer(text, key_bin)
 print(hex(a))
-print(hex(serpent_dechiffrer(a, key)))
+print(hex(serpent_dechiffrer(a, key_bin)))"""
