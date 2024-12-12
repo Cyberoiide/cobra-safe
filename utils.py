@@ -9,29 +9,44 @@ def modular_exponentiation(base, exp, mod):
         exp //= 2
     return result
 
-def is_prime(n, k=10):
+def is_prime(n, k=5):
+    """
+    Vérifie si un nombre est premier en utilisant le test de primalité de Rabin-Miller.
+
+    :param n: Nombre à vérifier
+    :param k: Nombre d'itérations du test (plus élevé, plus précis)
+    :return: True si n est probablement premier, sinon False
+    """
     if n <= 1:
         return False
     if n <= 3:
         return True
     if n % 2 == 0:
         return False
-    r, s = 0, n - 1
-    while s % 2 == 0:
+
+    # Écrire n-1 comme 2^r * d avec d impair
+    r, d = 0, n - 1
+    while d % 2 == 0:
         r += 1
-        s //= 2
+        d //= 2
+
+    # Effectuer k tests
     for _ in range(k):
-        a = random.randint(2, n - 2)
-        x = pow(a, s, n)
+        a = random.randint(2, n - 2)  # Choisir un nombre aléatoire dans [2, n-2]
+        x = pow(a, d, n)  # Calculer (a^d) % n
         if x == 1 or x == n - 1:
             continue
+
+        # Vérifier si x reste congru à n-1 pour un des 2^r * d
         for _ in range(r - 1):
             x = pow(x, 2, n)
             if x == n - 1:
                 break
         else:
             return False
+
     return True
+
 
 def generate_large_prime(bits=1024):
     while True:

@@ -4,7 +4,13 @@ import os
 
 def create_user(username, password):
     p = generate_large_prime()  # Generate a large prime number
-    g = 2  # Generator
+    generatorFound = False
+    g = 2  # Start at 2
+    while not generatorFound:
+        if pow(g, 2, p) != 1 and pow(g, (p-1)//2, p) != 1:
+            generatorFound = True
+        else:
+            g += 1
     derived_key = int(derive_key(password), 16)
     s = derived_key % (p - 1)
     public_key = modular_exponentiation(g, s, p)
