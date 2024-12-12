@@ -1,29 +1,105 @@
 from utils import modular_exponentiation
 import random
+import socket
+import struct
 
-def generate_dh_keys():
-    # Define a large prime p and base g
-    p = 23  # Example small prime for testing; replace with larger prime for production
-    g = 5
-    private_key = random.randint(1, p - 2)
-    public_key = modular_exponentiation(g, private_key, p)
-    return p, g, private_key, public_key
+def is_prime_rabin_miller(n, k=5):
+    """
+    Vérifie si un nombre est premier en utilisant le test de primalité de Rabin-Miller.
 
+    :param n: Nombre à vérifier
+    :param k: Nombre d'itérations du test (plus élevé, plus précis)
+    :return: True si n est probablement premier, sinon False
+    """
+    if n <= 1:
+        return False
+    if n <= 3:
+        return True
+    if n % 2 == 0:
+        return False
+
+    # Écrire n-1 comme 2^r * d avec d impair
+    r, d = 0, n - 1
+    while d % 2 == 0:
+        r += 1
+        d //= 2
+
+    # Effectuer k tests
+    for _ in range(k):
+        a = random.randint(2, n - 2)  # Choisir un nombre aléatoire dans [2, n-2]
+        x = pow(a, d, n)  # Calculer (a^d) % n
+        if x == 1 or x == n - 1:
+            continue
+
+        # Vérifier si x reste congru à n-1 pour un des 2^r * d
+        for _ in range(r - 1):
+            x = pow(x, 2, n)
+            if x == n - 1:
+                break
+        else:
+            return False
+
+    return True
+
+
+
+       
 def compute_shared_secret(private_key, peer_public_key, p):
     return modular_exponentiation(peer_public_key, private_key, p)
+def generate_dh_keys():
+    return
 
 def start_dh_exchange():
     # Étape 1 : Génération de vos clés DH
-    p, g, private_key, public_key = generate_dh_keys()
+
+
+
+
+    primeFound = False
+    while not primeFound:
+        nombre = random.randint(2**191, 2**255) 
+        if is_prime_rabin_miller(nombre) :
+            if is_prime_rabin_miller(2*nombre+1) :
+                p = 2*nombre+1
+                primeFound = True
+
+    #p-1 = 2q 
+    #print(f"Le nombre premier p est {bin(p)}.")
+    print(f"Le nombre premier p est {p.bit_length()}.")
+    generatorFound = False
+    g = 2  # Start at 2
+    while not generatorFound:
+        if pow(g, 2, p) != 1 and pow(g, (p-1)//2, p) != 1:
+            generatorFound = True
+        else:
+            g += 1
     print(f"[INFO] Vos paramètres DH : p = {p}, g = {g}")
-    print(f"[INFO] Votre clé publique : {public_key}")
+    a = random.randint(1, p - 1)  # Clé client
+    print(f"[INFO] Votre clé privée : {a}")
 
-    # Simuler la clé publique d'un pair (normalement reçue via réseau)
-    peer_public_key = random.randint(1, p - 1)  # Simulation
-    print(f"[INFO] Clé publique reçue du pair : {peer_public_key}")
+    A = pow(g, a, p)  # Clé client publique
+    print(f"[INFO] Votre clé publique : {A}")
+    # Create a socket object
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # Connect to the server
+    client_socket.connect(('localhost', 12345))
+    messages = [b"dh",str(A).encode(),str(p).encode(),str(g).encode()]
+    for data in messages:
+        client_socket.sendall(data)
+        retour = client_socket.recv(1024)
+    #client_socket.sendall
+    """client_socket.sendall(b"dh")
+    client_socket.sendall(str(A).encode())
+    client_socket.sendall(str(p).encode())
+    client_socket.sendall(str(g).encode())"""
+    # Receive data from the server
+    data = client_socket.recv(1024)
+    B = int(data.decode())
+    session_key = pow(B,a,p)
+    print(f"[INFO] Clé de séssion dh: {session_key}")
 
-    # Étape 2 : Calcul du secret partagé
-    shared_secret = compute_shared_secret(private_key, peer_public_key, p)
-    print(f"[INFO] Secret partagé calculé : {shared_secret}")
-    return shared_secret
+    # Close the connection
+    client_socket.close()
+    return B
 
+start_dh_exchange()

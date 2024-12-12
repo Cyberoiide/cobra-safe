@@ -55,7 +55,7 @@ def main():
 
             if authenticate_with_schnorr(username, password):
                 post_auth_menu(username)
-        elif choice == "3":
+        elif option == "3":
             print("Démarrage de l'échange Diffie-Hellman...")
             shared_secret = start_dh_exchange()
             print(f"Le secret partagé est : {shared_secret}")
