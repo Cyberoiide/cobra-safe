@@ -9,6 +9,8 @@ def modular_exponentiation(base, exp, mod):
         exp //= 2
     return result
 
+
+
 def is_prime(n, k=5):
     """
     Vérifie si un nombre est premier en utilisant le test de primalité de Rabin-Miller.
@@ -46,6 +48,18 @@ def is_prime(n, k=5):
             return False
 
     return True
+
+
+def generate_prime(limit):
+    primeFound = False
+    while not primeFound:
+        nombre = random.randint(2**191, 2**limit) 
+        if is_prime(nombre) :
+            if is_prime(2*nombre+1) :
+                p = 2*nombre+1
+                primeFound = True
+    return p
+
 
 
 def generate_large_prime(bits=1024):

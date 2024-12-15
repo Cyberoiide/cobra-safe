@@ -1,45 +1,8 @@
-from utils import modular_exponentiation
+from utils import modular_exponentiation, is_prime, generate_prime
 import random
 import socket
 import struct
 
-def is_prime_rabin_miller(n, k=5):
-    """
-    Vérifie si un nombre est premier en utilisant le test de primalité de Rabin-Miller.
-
-    :param n: Nombre à vérifier
-    :param k: Nombre d'itérations du test (plus élevé, plus précis)
-    :return: True si n est probablement premier, sinon False
-    """
-    if n <= 1:
-        return False
-    if n <= 3:
-        return True
-    if n % 2 == 0:
-        return False
-
-    # Écrire n-1 comme 2^r * d avec d impair
-    r, d = 0, n - 1
-    while d % 2 == 0:
-        r += 1
-        d //= 2
-
-    # Effectuer k tests
-    for _ in range(k):
-        a = random.randint(2, n - 2)  # Choisir un nombre aléatoire dans [2, n-2]
-        x = pow(a, d, n)  # Calculer (a^d) % n
-        if x == 1 or x == n - 1:
-            continue
-
-        # Vérifier si x reste congru à n-1 pour un des 2^r * d
-        for _ in range(r - 1):
-            x = pow(x, 2, n)
-            if x == n - 1:
-                break
-        else:
-            return False
-
-    return True
 
 
 
@@ -55,13 +18,7 @@ def start_dh_exchange():
 
 
 
-    primeFound = False
-    while not primeFound:
-        nombre = random.randint(2**191, 2**255) 
-        if is_prime_rabin_miller(nombre) :
-            if is_prime_rabin_miller(2*nombre+1) :
-                p = 2*nombre+1
-                primeFound = True
+    p = generate_prime(255)  # Generate a large prime number
 
     #p-1 = 2q 
     #print(f"Le nombre premier p est {bin(p)}.")
