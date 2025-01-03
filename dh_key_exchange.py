@@ -1,29 +1,28 @@
-from utils import modular_exponentiation
-import random
+# projects/gs15_projet_cobra/dh_key_exchange.py
 
-def generate_dh_keys():
-    # Define a large prime p and base g
-    p = 23  # Example small prime for testing; replace with larger prime for production
-    g = 5
-    private_key = random.randint(1, p - 2)
-    public_key = modular_exponentiation(g, private_key, p)
-    return p, g, private_key, public_key
+import os
 
-def compute_shared_secret(private_key, peer_public_key, p):
-    return modular_exponentiation(peer_public_key, private_key, p)
+def generate_random_symmetric_key(key_size=32):
+    """
+    Génère une clé symétrique aléatoire pour tester COBRA.
+    :param key_size: Taille de la clé en octets (32 = 256 bits par défaut).
+    :return: Clé symétrique aléatoire sous forme de bytes.
+    """
+    key = os.urandom(key_size)
+    print(f"[DEBUG] Clé symétrique générée aléatoirement : {key.hex()}")
+    return key
 
 def start_dh_exchange():
-    # Étape 1 : Génération de vos clés DH
-    p, g, private_key, public_key = generate_dh_keys()
-    print(f"[INFO] Vos paramètres DH : p = {p}, g = {g}")
-    print(f"[INFO] Votre clé publique : {public_key}")
+    """
+    Remplace temporairement l'échange Diffie-Hellman par une génération aléatoire
+    de clé symétrique pour tester l'implémentation de COBRA.
+    :return: Clé symétrique aléatoire (pour tester).
+    """
+    print("[INFO] Simulation de l'échange Diffie-Hellman désactivée.")
+    print("[INFO] Génération d'une clé symétrique aléatoire pour les tests.")
+    return generate_random_symmetric_key()
 
-    # Simuler la clé publique d'un pair (normalement reçue via réseau)
-    peer_public_key = random.randint(1, p - 1)  # Simulation
-    print(f"[INFO] Clé publique reçue du pair : {peer_public_key}")
-
-    # Étape 2 : Calcul du secret partagé
-    shared_secret = compute_shared_secret(private_key, peer_public_key, p)
-    print(f"[INFO] Secret partagé calculé : {shared_secret}")
-    return shared_secret
-
+if __name__ == "__main__":
+    # Test autonome
+    test_key = start_dh_exchange()
+    print(f"[TEST] Clé générée : {test_key.hex()}")

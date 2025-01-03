@@ -1,3 +1,5 @@
+# projects/gs15_projet_cobra/key_management.py
+
 from utils import generate_large_prime, modular_exponentiation
 from kdf import derive_key
 import os

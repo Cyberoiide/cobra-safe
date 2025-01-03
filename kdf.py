@@ -1,3 +1,5 @@
+# projects/gs15_projet_cobra/kdf.py
+
 import hashlib
 
 def derive_key(password):
