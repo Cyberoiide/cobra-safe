@@ -3,6 +3,10 @@ from zkp import authenticate_with_schnorr
 from dh_key_exchange import start_dh_exchange
 from cobra import serpent_chiffrer, serpent_dechiffrer
 import socket
+
+
+
+
 print("1. Échange de clés (Diffie-Hellman)")
 session_key = None
 # Create a socket object
@@ -43,9 +47,11 @@ def post_auth_menu(username):
 
         if option == "1":
             print("[INFO] Démarrage de l'échange Diffie-Hellman...")	
+
+
         elif option == "2":
             print("[INFO] Envoi d'un message au coffre-fort.")
-            text = 0xabcdef0123456789abcdef0123456789
+            # text = 0xabcdef0123456789abcdef0123456789
             text = input("Entrez ce que vous voulez envoyer au coffre-fort : ")
             text = int.from_bytes(text.encode(), byteorder='big')
             ciphertext = serpent_chiffrer(text, session_key)
@@ -54,6 +60,8 @@ def post_auth_menu(username):
                 client_socket.sendall(data.encode())
                 retour = client_socket.recv(1024)
             print(f"[INFO] Message chiffré envoyé : {ciphertext}")
+
+
         elif option == "3":
             print("[INFO] Reception de message crypté stocké sur le coffre-fort.")
             line = input("Entrez la ligne que vous voulez récuperer dans votre coffre-fort : ")
@@ -68,6 +76,8 @@ def post_auth_menu(username):
                 n = priv_file.readline()
             decrypted_message = decrypt(int(rsa_lined), int(d), int(n))
             print(f"[INFO] Message déchiffré : {decrypted_message}")
+
+
         elif option == "4":
             print("Au revoir !")
             break
@@ -94,6 +104,8 @@ def main():
                 client_socket.sendall(data.encode())
                 retour = client_socket.recv(1024)
             print(f"Compte créé avec succès pour l'utilisateur {username}.")
+
+
         elif option == "2":
             username = input("Entrez votre nom d'utilisateur : ")
             password = input("Entrez votre mot de passe : ")
@@ -104,6 +116,8 @@ def main():
 
             if authenticate_with_schnorr(username, password):
                 post_auth_menu(username)
+
+
         elif option == "3":
             client_socket.close()
 
