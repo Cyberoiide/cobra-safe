@@ -136,11 +136,9 @@ def post_auth_menu(username):
             send_full_msg(client_socket, message_id.encode())
             ack = client_socket.recv(1024)
 
-            # Recevoir le message chiffré RSA
-            rsa_ciphertext = recv_full_msg(client_socket)
-
             # Charger la clé privée locale
-            private_key_path = f"users/{username}/rsa_private_key.txt"  # Stockage local organisé
+            private_key_path = f"users/{username}/rsa_private_key.txt"
+            print(f"[DEBUG] Chargement de la clé privée depuis : {private_key_path}")
             try:
                 with open(private_key_path, "r") as priv_file:
                     d = int(priv_file.readline())
@@ -149,10 +147,32 @@ def post_auth_menu(username):
                 print(f"[ERROR] Clé privée non trouvée pour l'utilisateur {username}.")
                 return
 
-            # Déchiffrer avec RSA
-            plaintext_int = pow(int(rsa_ciphertext.decode()), d, n)
-            plaintext_bytes = plaintext_int.to_bytes((plaintext_int.bit_length() + 7) // 8, byteorder='big')
-            plaintext = plaintext_bytes.decode('utf-8')
+            # Recevoir les blocs RSA chiffrés avec COBRA
+            plaintext_blocks = []
+            while True:
+                cobra_ciphertext = recv_full_msg(client_socket)
+
+                # Vérifier si c'est le signal de fin
+                if cobra_ciphertext == b"FIN":
+                    print("[INFO] Fin de la transmission des blocs.")
+                    break
+
+                # Déchiffrer le bloc avec COBRA
+                session_key_bytes = session_key.to_bytes((session_key.bit_length() + 7) // 8, byteorder="big")
+                rsa_block_bytes = cobra_decrypt_ecb(cobra_ciphertext, session_key_bytes)
+                rsa_block = rsa_block_bytes.decode("utf-8")
+
+                print(f"[DEBUG] Bloc déchiffré avec COBRA : {rsa_block}")
+
+                # Déchiffrer avec RSA
+                rsa_block_int = int(rsa_block)
+                decrypted_block_int = pow(rsa_block_int, d, n)
+                decrypted_block = decrypted_block_int.to_bytes((decrypted_block_int.bit_length() + 7) // 8, byteorder="big")
+                plaintext_blocks.append(decrypted_block)
+
+            # Reconstituer le message complet
+            plaintext_bytes = b"".join(plaintext_blocks)
+            plaintext = plaintext_bytes.decode("utf-8")
 
             print(f"[INFO] Message déchiffré : {plaintext}")
 
