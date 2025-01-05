@@ -125,12 +125,23 @@ while True:
                 send_full_msg(client_socket, b"ERREUR : Cle publique introuvable.")
                 continue
 
-            # Diviser en segments d'octets pour RSA
-            plaintext_segments = [plaintext_bytes[i:i + 100] for i in range(0, len(plaintext_bytes), 100)]
+            # Diviser en blocs adaptés à RSA
+            block_size = (n.bit_length() - 1) // 8  # Taille maximale pour RSA en octets
+            plaintext_blocks = [plaintext_bytes[i:i + block_size] for i in range(0, len(plaintext_bytes), block_size)]
+
+            # Chiffrer chaque bloc avec RSA
+            encrypted_blocks = []
+            for block in plaintext_blocks:
+                block_int = int.from_bytes(block, 'big')
+                if block_int >= n:
+                    raise ValueError("Bloc trop grand pour être chiffré avec RSA.")
+                encrypted_block = pow(block_int, e, n)
+                encrypted_blocks.append(str(encrypted_block))
+
+            # Assembler les blocs chiffrés dans un fichier
             user_dir = f"users/{username}/coffre-fort"
             os.makedirs(user_dir, exist_ok=True)
 
-            # Charger ou initialiser `last_message_id`
             last_id_path = f"{user_dir}/last_message_id.txt"
             try:
                 with open(last_id_path, "r") as id_file:
@@ -138,14 +149,12 @@ while True:
             except FileNotFoundError:
                 last_message_id = 0
 
-            # Chiffrer et stocker chaque segment dans un fichier
-            for segment in plaintext_segments:
-                last_message_id += 1
-                rsa_msg = pow(int.from_bytes(segment, 'big'), e, n)
-                message_path = f"{user_dir}/message_{last_message_id}.txt"
-                with open(message_path, "w") as message_file:
-                    message_file.write(str(rsa_msg))
-                print(f"[INFO] Segment enregistré dans {message_path}.")
+            # Sauvegarder le message chiffré par blocs
+            last_message_id += 1
+            message_path = f"{user_dir}/message_{last_message_id}.txt"
+            with open(message_path, "w") as message_file:
+                message_file.write("\n".join(encrypted_blocks))
+            print(f"[INFO] Message enregistré dans {message_path}.")
 
             # Mettre à jour le `last_message_id`
             with open(last_id_path, "w") as id_file:
@@ -154,7 +163,6 @@ while True:
         except Exception as e:
             print(f"[ERROR] Erreur lors du traitement de `send_data` : {e}")
             send_full_msg(client_socket, b"ERREUR : Impossible de traiter le message.")
-
 
 
 
@@ -188,32 +196,45 @@ while True:
     elif message == "recup_msg":
         print("[INFO] Envoi des données chiffrées demandées.")
 
-        # Recevoir le username
-        username_bytes = recv_full_msg(client_socket)
-        client_socket.sendall(b"Recu")  # Ack
-        username = username_bytes.decode()
-        print(f"[INFO] Nom d'utilisateur : {username}")
-
-        # Recevoir le message_id
-        message_id_bytes = recv_full_msg(client_socket)
-        client_socket.sendall(b"Recu")  # Ack
-        message_id = message_id_bytes.decode()
-        print(f"[INFO] Message ID demandé : {message_id}")
-
-        # Lire le fichier chiffré RSA
         try:
-            message_path = f"users/{username}/coffre-fort/message_{message_id}.txt"
-            with open(message_path, "r") as file:
-                rsa_msg = file.read().strip()
-        except FileNotFoundError:
-            print(f"[ERROR] Fichier message_{message_id}.txt introuvable.")
-            send_full_msg(client_socket, b"ERREUR : Fichier introuvable.")
-            continue
+            # Recevoir le username
+            username_bytes = recv_full_msg(client_socket)
+            client_socket.sendall(b"Recu")  # Ack
+            username = username_bytes.decode()
+            print(f"[INFO] Nom d'utilisateur : {username}")
 
-        # Envoyer le fichier chiffré RSA au client
-        send_full_msg(client_socket, rsa_msg.encode())
-        print("[INFO] Données chiffrées RSA envoyées.")
+            # Recevoir le message_id
+            message_id_bytes = recv_full_msg(client_socket)
+            client_socket.sendall(b"Recu")  # Ack
+            message_id = message_id_bytes.decode()
+            print(f"[INFO] Message ID demandé : {message_id}")
 
+            # Lire le fichier correspondant
+            try:
+                message_path = f"users/{username}/coffre-fort/message_{message_id}.txt"
+                with open(message_path, "r") as file:
+                    encrypted_blocks = file.read().strip().split("\n")
+            except FileNotFoundError:
+                print(f"[ERROR] Fichier message_{message_id}.txt introuvable.")
+                send_full_msg(client_socket, b"ERREUR : Fichier introuvable.")
+                continue
+
+            # Envoyer les blocs un par un
+            session_key_bytes = session_key.to_bytes((session_key.bit_length() + 7) // 8, byteorder='big')
+            for block in encrypted_blocks:
+                print(f"[DEBUG] Bloc RSA avant chiffrement COBRA : {block}")
+                block_bytes = block.encode('utf-8')  # Chaque bloc RSA est encodé en bytes
+                cobra_ciphertext = cobra_encrypt_ecb(block_bytes, session_key_bytes)
+                send_full_msg(client_socket, cobra_ciphertext)  # Envoi du bloc via COBRA
+                print(f"[DEBUG] Bloc envoyé avec COBRA (hex) : {cobra_ciphertext.hex()}")
+
+            # Envoyer un signal de fin de transmission
+            send_full_msg(client_socket, b"FIN")
+            print("[INFO] Tous les blocs ont été envoyés.")
+
+        except Exception as e:
+            print(f"[ERROR] Erreur lors du traitement de `recup_msg` : {e}")
+            send_full_msg(client_socket, b"ERREUR : Impossible de traiter la demande.")
 
 
 
