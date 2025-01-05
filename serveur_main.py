@@ -67,34 +67,6 @@ while True:
         print(f"[INFO] Clé de session {session_key}")
         # Répondre au client  
 
-    # elif message == "send_data":
-    #     # Si le message est "send_data", attendre les données chiffrées
-    #     print("[INFO] Attente des données chiffrées")
-    #     data = client_socket.recv(1024)
-    #     print(f"[INFO] Données chiffrées reçues: {int(data.decode())}")
-    #     client_socket.sendall(b"Recu")
-    #     text = serpent_dechiffrer(int(data.decode()), session_key)
-
-    #     byte_length = (text.bit_length() + 7) // 8  # Determine the number of bytes needed
-    #     text_as_bytes = text.to_bytes(byte_length, byteorder='big')
-    #     decoded_text = text_as_bytes.decode()
-    #     print(f"[INFO] Données déchiffrées: {(decoded_text)}")
-    #     username = receive_data()
-    
-    #     try:
-    #     # Charger les clés publiques et privées
-    #         with open(f"users/{username}/rsa_public_key.txt", "r") as pub_file:
-    #             e = int(pub_file.readline())
-    #             n = int(pub_file.readline())
-    #     except FileNotFoundError:
-    #         print(f"[ERROR] User {username} introuvable.")
-    #     print(f"[INFO] Paramètres RSA: e = {e}, n = {n}")
-    #     rsa_msg = encrypt_rsa(decoded_text, e, n)
-    #     os.makedirs(f"users/{username}", exist_ok=True)
-    #     with open(f"users/{username}/coffre-fort.txt", "a") as priv_file:
-    #         priv_file.write(f"{rsa_msg}\n")
-
-
     elif message == "send_data":
         print("[INFO] Attente des données chiffrées.")
 
@@ -178,20 +150,6 @@ while True:
         with open(f"users/{username}/rsa_public_key.txt", "w") as priv_file:
             priv_file.write(f"{e}\n{n}\n")
 
-    # elif message == "recup_msg":
-    #     # Si le message est "recup_msg", envoyer les données chiffrées
-    #     print("[INFO] Envoi des données chiffrées")
-    #     position = int(receive_data())
-    #     username = receive_data()
-    #     try:
-    #         with open(f"users/{username}/coffre-fort.txt", "r") as priv_file:
-    #             for i in range(position):
-    #                 rsa_msg = priv_file.readline()
-    #     except FileNotFoundError:
-    #         print(f"[ERROR] User {username} introuvable.")
-    #     print(f"[INFO] Données chiffrées: {rsa_msg}")
-    #     client_socket.sendall(rsa_msg.encode())
-
 
     elif message == "recup_msg":
         print("[INFO] Envoi des données chiffrées demandées.")
@@ -235,7 +193,6 @@ while True:
         except Exception as e:
             print(f"[ERROR] Erreur lors du traitement de `recup_msg` : {e}")
             send_full_msg(client_socket, b"ERREUR : Impossible de traiter la demande.")
-
 
 
 # Close the connection
