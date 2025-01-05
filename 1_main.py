@@ -8,7 +8,7 @@ from utils_network import send_full_msg, recv_full_msg
 
 
 
-print("1. Échange de clés (Diffie-Hellman)")
+# print("1. Échange de clés (Diffie-Hellman)")
 session_key = None
 # Create a socket object
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -58,17 +58,13 @@ def post_auth_menu(username):
 
     while True:
         print(f"Bienvenue {username}, que souhaitez-vous faire ?")
-        print("1. Échange de clés (Diffie-Hellman)")
-        print("2. Envoyer un message au coffre-fort")
-        print("3. Récuperer le message du coffre-fort")
-        print("4. Quitter")
+        # print("1. Échange de clés (Diffie-Hellman)")
+        print("1. Envoyer un message au coffre-fort")
+        print("2. Récuperer le message du coffre-fort")
+        print("3. Quitter")
         option = input("Choisissez une option : ")
 
         if option == "1":
-            print("[INFO] Démarrage de l'échange Diffie-Hellman...")	
-
-
-        elif option == "2":
             print("[INFO] Envoi d'un message au coffre-fort.")
             text = input("Entrez ce que vous voulez envoyer au coffre-fort : ")
 
@@ -90,7 +86,7 @@ def post_auth_menu(username):
             print("[INFO] Message chiffré envoyé.")
 
 
-        elif option == "3":
+        elif option == "2":
             print("[INFO] Récupération d'un message depuis le coffre-fort.")
 
             # Envoyer la commande "recup_msg"
@@ -146,7 +142,7 @@ def post_auth_menu(username):
 
             print(f"[INFO] Message déchiffré : {plaintext}")
 
-        elif option == "4":
+        elif option == "3":
             print("Au revoir !")
             break
         else:
