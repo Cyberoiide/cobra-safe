@@ -68,18 +68,6 @@ def post_auth_menu(username):
             print("[INFO] Démarrage de l'échange Diffie-Hellman...")	
 
 
-        # elif option == "2":
-        #     print("[INFO] Envoi d'un message au coffre-fort.")
-        #     # text = 0xabcdef0123456789abcdef0123456789
-        #     text = input("Entrez ce que vous voulez envoyer au coffre-fort : ")
-        #     text = int.from_bytes(text.encode(), byteorder='big')
-        #     ciphertext = serpent_chiffrer(text, session_key)
-        #     messages = ["send_data",str(ciphertext),username]
-        #     for data in messages:
-        #         client_socket.sendall(data.encode())
-        #         retour = client_socket.recv(1024)
-        #     print(f"[INFO] Message chiffré envoyé : {ciphertext}")
-
         elif option == "2":
             print("[INFO] Envoi d'un message au coffre-fort.")
             text = input("Entrez ce que vous voulez envoyer au coffre-fort : ")
@@ -100,24 +88,6 @@ def post_auth_menu(username):
             ack = client_socket.recv(1024)
 
             print("[INFO] Message chiffré envoyé.")
-
-
-
-
-        # elif option == "3":
-        #     print("[INFO] Reception de message crypté stocké sur le coffre-fort.")
-        #     line = input("Entrez la ligne que vous voulez récuperer dans votre coffre-fort : ")
-        #     messages = ["recup_msg",str(line),username]
-        #     for data in messages:
-        #         client_socket.sendall(data.encode())
-        #         retour = client_socket.recv(1024)
-        #     rsa_lined = client_socket.recv(1024).decode()
-        #     print(f"[INFO] Message chiffré récupéré : {rsa_lined}")
-        #     with open(f"users/{username}/rsa_private_key.txt", "r") as priv_file:
-        #         d = priv_file.readline()
-        #         n = priv_file.readline()
-        #     decrypted_message = decrypt(int(rsa_lined), int(d), int(n))
-        #     print(f"[INFO] Message déchiffré : {decrypted_message}")
 
 
         elif option == "3":
@@ -175,11 +145,6 @@ def post_auth_menu(username):
             plaintext = plaintext_bytes.decode("utf-8")
 
             print(f"[INFO] Message déchiffré : {plaintext}")
-
-
-
-
-
 
         elif option == "4":
             print("Au revoir !")
