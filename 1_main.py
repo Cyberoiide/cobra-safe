@@ -1,8 +1,9 @@
 from key_management import create_user,create_rsa
 from zkp import authenticate_with_schnorr
 from dh_key_exchange import start_dh_exchange
-from cobra import serpent_chiffrer, serpent_dechiffrer
+from cobra import cobra_decrypt_ecb, cobra_encrypt_ecb
 import socket
+from utils_network import send_full_msg, recv_full_msg
 
 
 
@@ -19,10 +20,27 @@ def verify_certificate(username):
     # Simulated certificate verification
     return True
 
-def decrypt(ciphertext, d, n):
-    decrypted_int = pow(ciphertext, d, n)
-    decrypted_message = decrypted_int.to_bytes((decrypted_int.bit_length() + 7) // 8, 'big').decode('utf-8')
-    return decrypted_message
+# def decrypt(ciphertext, d, n):
+#     decrypted_int = pow(ciphertext, d, n)
+#     decrypted_message = decrypted_int.to_bytes((decrypted_int.bit_length() + 7) // 8, 'big').decode('utf-8')
+#     return decrypted_message
+
+def encrypt_message_with_cobra(plaintext: str, session_key_bytes: bytes) -> bytes:
+    """
+    Chiffre une chaîne de caractères (plaintext) avec COBRA.
+    """
+    plaintext_bytes = plaintext.encode('utf-8')
+    return cobra_encrypt_ecb(plaintext_bytes, session_key_bytes)
+
+def decrypt_message_with_cobra(ciphertext: bytes, session_key_bytes: bytes) -> str:
+    """
+    Déchiffre un ciphertext en bytes avec COBRA et retourne une chaîne UTF-8.
+    """
+    plaintext_bytes = cobra_decrypt_ecb(ciphertext, session_key_bytes)
+    return plaintext_bytes.decode('utf-8')
+
+
+
 
 def post_auth_menu(username):
     #Echange de clé de session dès l'authentification
@@ -34,8 +52,9 @@ def post_auth_menu(username):
     # Receive data from the server
     data = client_socket.recv(1024)
     B = int(data.decode())
-    session_key = pow(B,a,p)
-    print(f"La clé de session est {session_key}")
+    session_key = pow(B, a, p)
+    session_key_bytes = session_key.to_bytes((session_key.bit_length() + 7) // 8, byteorder='big')
+    print(f"[INFO] La clé de session en bytes : {session_key_bytes.hex()}")
 
     while True:
         print(f"Bienvenue {username}, que souhaitez-vous faire ?")
@@ -49,33 +68,97 @@ def post_auth_menu(username):
             print("[INFO] Démarrage de l'échange Diffie-Hellman...")	
 
 
+        # elif option == "2":
+        #     print("[INFO] Envoi d'un message au coffre-fort.")
+        #     # text = 0xabcdef0123456789abcdef0123456789
+        #     text = input("Entrez ce que vous voulez envoyer au coffre-fort : ")
+        #     text = int.from_bytes(text.encode(), byteorder='big')
+        #     ciphertext = serpent_chiffrer(text, session_key)
+        #     messages = ["send_data",str(ciphertext),username]
+        #     for data in messages:
+        #         client_socket.sendall(data.encode())
+        #         retour = client_socket.recv(1024)
+        #     print(f"[INFO] Message chiffré envoyé : {ciphertext}")
+
         elif option == "2":
             print("[INFO] Envoi d'un message au coffre-fort.")
-            # text = 0xabcdef0123456789abcdef0123456789
             text = input("Entrez ce que vous voulez envoyer au coffre-fort : ")
-            text = int.from_bytes(text.encode(), byteorder='big')
-            ciphertext = serpent_chiffrer(text, session_key)
-            messages = ["send_data",str(ciphertext),username]
-            for data in messages:
-                client_socket.sendall(data.encode())
-                retour = client_socket.recv(1024)
-            print(f"[INFO] Message chiffré envoyé : {ciphertext}")
+
+            # Chiffrer le texte avec COBRA
+            ciphertext = encrypt_message_with_cobra(text, session_key_bytes)
+
+            # Envoyer la commande "send_data"
+            client_socket.sendall(b"send_data")
+            ack = client_socket.recv(1024)
+
+            # Envoyer le message chiffré
+            send_full_msg(client_socket, ciphertext)
+            ack = client_socket.recv(1024)
+
+            # Envoyer le nom d'utilisateur
+            send_full_msg(client_socket, username.encode())
+            ack = client_socket.recv(1024)
+
+            print("[INFO] Message chiffré envoyé.")
+
+
+
+
+        # elif option == "3":
+        #     print("[INFO] Reception de message crypté stocké sur le coffre-fort.")
+        #     line = input("Entrez la ligne que vous voulez récuperer dans votre coffre-fort : ")
+        #     messages = ["recup_msg",str(line),username]
+        #     for data in messages:
+        #         client_socket.sendall(data.encode())
+        #         retour = client_socket.recv(1024)
+        #     rsa_lined = client_socket.recv(1024).decode()
+        #     print(f"[INFO] Message chiffré récupéré : {rsa_lined}")
+        #     with open(f"users/{username}/rsa_private_key.txt", "r") as priv_file:
+        #         d = priv_file.readline()
+        #         n = priv_file.readline()
+        #     decrypted_message = decrypt(int(rsa_lined), int(d), int(n))
+        #     print(f"[INFO] Message déchiffré : {decrypted_message}")
 
 
         elif option == "3":
-            print("[INFO] Reception de message crypté stocké sur le coffre-fort.")
-            line = input("Entrez la ligne que vous voulez récuperer dans votre coffre-fort : ")
-            messages = ["recup_msg",str(line),username]
-            for data in messages:
-                client_socket.sendall(data.encode())
-                retour = client_socket.recv(1024)
-            rsa_lined = client_socket.recv(1024).decode()
-            print(f"[INFO] Message chiffré récupéré : {rsa_lined}")
-            with open(f"users/{username}/rsa_private_key.txt", "r") as priv_file:
-                d = priv_file.readline()
-                n = priv_file.readline()
-            decrypted_message = decrypt(int(rsa_lined), int(d), int(n))
-            print(f"[INFO] Message déchiffré : {decrypted_message}")
+            print("[INFO] Récupération d'un message depuis le coffre-fort.")
+
+            # Envoyer la commande "recup_msg"
+            client_socket.sendall(b"recup_msg")
+            ack = client_socket.recv(1024)
+
+            # Envoyer le nom d'utilisateur
+            send_full_msg(client_socket, username.encode())
+            ack = client_socket.recv(1024)
+
+            # Envoyer l'ID du message
+            message_id = input("Quel message_id voulez-vous récupérer ? ")
+            send_full_msg(client_socket, message_id.encode())
+            ack = client_socket.recv(1024)
+
+            # Recevoir le message chiffré RSA
+            rsa_ciphertext = recv_full_msg(client_socket)
+
+            # Charger la clé privée locale
+            private_key_path = f"users/{username}/rsa_private_key.txt"  # Stockage local organisé
+            try:
+                with open(private_key_path, "r") as priv_file:
+                    d = int(priv_file.readline())
+                    n = int(priv_file.readline())
+            except FileNotFoundError:
+                print(f"[ERROR] Clé privée non trouvée pour l'utilisateur {username}.")
+                return
+
+            # Déchiffrer avec RSA
+            plaintext_int = pow(int(rsa_ciphertext.decode()), d, n)
+            plaintext_bytes = plaintext_int.to_bytes((plaintext_int.bit_length() + 7) // 8, byteorder='big')
+            plaintext = plaintext_bytes.decode('utf-8')
+
+            print(f"[INFO] Message déchiffré : {plaintext}")
+
+
+
+
 
 
         elif option == "4":
@@ -83,7 +166,6 @@ def post_auth_menu(username):
             break
         else:
             print("[ERROR] Option invalide, veuillez réessayer.")
-
 
 
 def main():

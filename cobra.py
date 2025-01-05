@@ -173,69 +173,54 @@ def reverse_transfo_lineaire(text):
 
 
 
-def key_expansion(key, rounds=32):
+def key_expansion(key_bytes, rounds=32):
     """
-    Expansions des clés pour l'algorithme Serpent.
-    
-    :param key: Clé d'entrée (bytes), de taille 128, 192 ou 256 bits.
-    :param rounds: Nombre de tours (par défaut 32).
-    :return: Liste des sous-clés générées (132 blocs de 32 bits).
+    Expansion de la clé pour l'algorithme Serpent.
+    :param key_bytes: Clé d'entrée (bytes), de taille 16, 24 ou 32 octets (128, 192, 256 bits).
+    :param rounds: Nombre de tours (32 par défaut).
+    :return: Liste des sous-clés générées (132 sous-clés).
     """
-    # Étape 1 : Initialisation de la clé
-    #key = key.ljust(32, b'\x00')  # Complète avec des zéros à droite pour obtenir 32 octets
-    
-    binary_representation = bin(key)[2:]  # Remove "0b" prefix
-    binary_representation = binary_representation + '0' * (256 - len(binary_representation))
-    # Convert binary string to bytes
-    key = int(binary_representation, 2).to_bytes(32, byteorder='big') 
-    
-    blocks = []  # Contient les 8 blocs de 32 bits
-    for i in range(8):  # Diviser en 8 blocs
-        block = int.from_bytes(key[i * 4:(i + 1) * 4], byteorder='big')
-        blocks.append(block)
-        
+    if not isinstance(key_bytes, (bytes, bytearray)):
+        raise ValueError("La clé doit être en bytes.")
 
-    # Étape 2 : Itérations de l’expansion de clé :
-    sub_keys = blocks[:]
-    yo= sub_keys
-    phi = 0x9E3779B9  # Nombre d'or 
-    total_keys = 132  # 132 sous-clés de 32 bits
-    #print(sub_keys)
-    # Génération des 132 sous-clés
+    # On s'assure d'avoir 32 octets en padding si la clé est plus courte
+    key_bytes = key_bytes.ljust(32, b'\x00')
+    
+    # On divise en 8 blocs de 4 octets => 32 bits
+    blocks = []
+    for i in range(8):
+        block = int.from_bytes(key_bytes[i*4:(i+1)*4], byteorder='big')
+        blocks.append(block)
+
+    phi = 0x9E3779B9
+    total_keys = 132
+    sub_keys = blocks[:]  # on recopie
+
     for i in range(8, total_keys):
-        new_key = (sub_keys[i - 8] ^ sub_keys[i - 5] ^ sub_keys[i - 3] ^ sub_keys[i - 1] ^ phi ^ i)
+        new_key = (sub_keys[i - 8] 
+                   ^ sub_keys[i - 5] 
+                   ^ sub_keys[i - 3] 
+                   ^ sub_keys[i - 1] 
+                   ^ phi ^ i)
         # Rotation circulaire gauche de 11 bits
         new_key = ((new_key << 11) | (new_key >> (32 - 11))) & 0xFFFFFFFF
         sub_keys.append(new_key)
-    
-    # Organiser les sous-clés transformées en clés de tour de 128 bits
+
+    # Organiser les sous-clés en blocs de 128 bits
     round_keys = []
     for i in range(0, len(sub_keys), 4):
-        round_key = (sub_keys[i] << 96) | (sub_keys[i + 1] << 64) | \
-                    (sub_keys[i + 2] << 32 ) | sub_keys[i + 3]
-        #round_keys.append(round_key.to_bytes(16, byteorder='big'))
+        round_key = ((sub_keys[i] << 96)
+                     | (sub_keys[i+1] << 64)
+                     | (sub_keys[i+2] << 32)
+                     | sub_keys[i+3])
         round_keys.append(round_key)
-        
-    
-    perm_key = []
-    for i in range(len(round_keys)):
-        chunks = [(round_keys[i] >> (4 * i)) & 0xF for i in range(32)]  # 32 chunks of 4 bits
-
-        # Apply the S-box to each chunk
-        substituted_chunks = [serpent_sbox(chunk, 0) for chunk in chunks]
-
-        # Reassemble the key
-        reassembled_key = 0
-        for i, chunk in enumerate(substituted_chunks):
-            reassembled_key |= (chunk << (4 * i))
-        perm_key.append(reassembled_key)
-    
 
     return round_keys
 
 
 
-def serpent_chiffrer(plaintext, key, rounds=32):
+
+def serpent_chiffrer(plaintext: int, round_keys: list[int], rounds=32) -> int:
     """
     Encrypts a 128-bit plaintext using Serpent.
     
@@ -247,41 +232,91 @@ def serpent_chiffrer(plaintext, key, rounds=32):
     Returns:
         int: Encrypted ciphertext.
     """
-    # Generate round keys
-    round_keys = key_expansion(key)
+    # # Generate round keys
+    # round_keys = key_expansion(key_bytes)
 
     # Initial permutation
     ciphertext = plaintext
-    #round_num = 0
     for round_num in range(rounds):
-        # Add Round Key
-        ciphertext = ciphertext ^ round_keys[round_num]  
-        # Substitution
-        ciphertext = substitution(ciphertext, round_num // 8) 
-        # Feistel de Réré
-        ciphertext =  feistel(ciphertext, round_keys[round_num])
-        # Transformation linéaire
+        ciphertext ^= round_keys[round_num]
+        ciphertext = substitution(ciphertext, round_num // 8)
+        ciphertext = feistel(ciphertext, round_keys[round_num])
         ciphertext = transfo_lineaire(ciphertext)
     return ciphertext
 
-def serpent_dechiffrer(plaintext, key, rounds=32):
+def serpent_dechiffrer(ciphertext_int: int, round_keys: list[int], rounds=32) -> int:
     # Initial permutation
 
-    round_keys = key_expansion(key)
+    # round_keys = key_expansion(key)
     
-    ciphertext = plaintext
-    round_num = 0
+    plaintext = ciphertext_int
+    # round_num = 0
 
     for round_num in range(31, -1, -1):
-        #Transformation linéaire
-        ciphertext = reverse_transfo_lineaire(ciphertext)
-        # Feistel de Réré
-        ciphertext =  reverse_feistel(ciphertext, round_keys[round_num])
-        # Substitution
-        ciphertext = reverse_substitution(ciphertext, 4 + (round_num // 8))
-        # Add Round Key
-        ciphertext = ciphertext ^ round_keys[round_num]
-    return ciphertext
+        plaintext = reverse_transfo_lineaire(plaintext)
+        plaintext = reverse_feistel(plaintext, round_keys[round_num])
+        plaintext = reverse_substitution(plaintext, 4 + (round_num // 8))
+        plaintext ^= round_keys[round_num]
+    return plaintext
+
+
+BLOCK_SIZE = 16  # 128 bits
+
+def cobra_encrypt_ecb(plaintext_bytes: bytes, key_bytes: bytes) -> bytes:
+    """
+    Chiffre plaintext_bytes (taille arbitraire) en mode ECB
+    avec votre implémentation COBRA (Serpent modifié).
+    """
+    # 1) Padding
+    padding_len = BLOCK_SIZE - (len(plaintext_bytes) % BLOCK_SIZE)
+    padding = bytes([padding_len] * padding_len)
+    plaintext_bytes += padding
+
+    # 2) Expansion de la clé
+    round_keys = key_expansion(key_bytes)
+
+    ciphertext_blocks = []
+
+    # 3) Traitement bloc par bloc
+    for i in range(0, len(plaintext_bytes), BLOCK_SIZE):
+        block = plaintext_bytes[i:i + BLOCK_SIZE]
+        block_int = int.from_bytes(block, 'big')
+
+        # On passe round_keys directement
+        encrypted_int = serpent_chiffrer(block_int, round_keys)
+        encrypted_block = encrypted_int.to_bytes(BLOCK_SIZE, 'big')
+
+        ciphertext_blocks.append(encrypted_block)
+
+    return b''.join(ciphertext_blocks)
+
+def cobra_decrypt_ecb(ciphertext_bytes: bytes, key_bytes: bytes) -> bytes:
+    """
+    Déchiffre ciphertext_bytes (taille multiple de 16) en mode ECB
+    via COBRA (Serpent) et retire le padding.
+    """
+    # 1) Expansion de la clé
+    round_keys = key_expansion(key_bytes)  # expansion une seule fois
+
+    plaintext_blocks = []
+
+    # 2) Déchiffrement bloc par bloc
+    for i in range(0, len(ciphertext_bytes), BLOCK_SIZE):
+        block = ciphertext_bytes[i : i + BLOCK_SIZE]
+        block_int = int.from_bytes(block, 'big')
+
+        # On passe la liste de sous-clés
+        decrypted_int = serpent_dechiffrer(block_int, round_keys)
+        decrypted_block = decrypted_int.to_bytes(BLOCK_SIZE, 'big')
+        plaintext_blocks.append(decrypted_block)
+
+
+    # 3) Retirer le padding sur le dernier bloc
+    full_plaintext = b''.join(plaintext_blocks)
+    padding_len = full_plaintext[-1]  # On suppose que le padding est correct
+    return full_plaintext[:-padding_len]
+
+
 
 # Exemple d'utilisation
 """key_128 = b"1234567890abcdef"  # Clé de 128 bits
